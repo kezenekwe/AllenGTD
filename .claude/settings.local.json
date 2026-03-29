@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pod install:*)",
+      "Bash(curl -L \"https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.bz2\" -o /tmp/boost_1_83_0.tar.bz2)",
+      "Bash(shasum -a 256 /tmp/boost_1_83_0.tar.bz2)",
+      "Bash(curl -L \"https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.bz2\" -o /tmp/boost_1_83_0.tar.bz2)",
+      "Bash(mkdir -p ~/Library/Caches/CocoaPods/downloads)",
+      "Bash(cp /tmp/boost_1_83_0.tar.bz2 ~/Library/Caches/CocoaPods/downloads/)",
+      "Bash(npm start:*)",
+      "Bash(npx react-native:*)",
+      "Bash(xargs kill:*)",
+      "Bash(lsof -ti:8081)"
+    ]
+  }
+}
