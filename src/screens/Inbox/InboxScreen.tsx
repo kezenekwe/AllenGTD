@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {useInboxItems, useItemActions} from '@hooks/useItems';
 import {useGTDWorkflow} from '@hooks/useGTDWorkflow';
+import {useToast} from '@components/Toast';
 import Item from '@services/database/models/Item';
 import ProcessingDialog from '@components/workflow/ProcessingDialog';
 
@@ -22,6 +23,7 @@ import ProcessingDialog from '@components/workflow/ProcessingDialog';
 export default function InboxScreen() {
   const {items, isLoading} = useInboxItems();
   const {addToInbox, deleteItem, isLoading: isSaving} = useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const {
     isDialogOpen,
     currentItem,
@@ -39,7 +41,12 @@ export default function InboxScreen() {
     const text = inputText.trim();
     if (!text) return;
     setInputText('');
-    await addToInbox(text);
+    try {
+      await addToInbox(text);
+      showToast('Added to inbox', 'success');
+    } catch {
+      showToast('Failed to add item', 'error');
+    }
   };
 
   const handleDelete = (item: Item) => {
@@ -48,13 +55,29 @@ export default function InboxScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => deleteItem(item),
+        onPress: async () => {
+          try {
+            await deleteItem(item);
+            showToast('Item deleted', 'success');
+          } catch {
+            showToast('Failed to delete item', 'error');
+          }
+        },
       },
     ]);
   };
 
   const handleProcess = (item: Item) => {
     startProcessing(item);
+  };
+
+  const handleProcessComplete: typeof handleComplete = async (...args) => {
+    try {
+      await handleComplete(...args);
+      showToast('Item processed', 'success');
+    } catch {
+      showToast('Failed to process item', 'error');
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────
@@ -146,12 +169,15 @@ export default function InboxScreen() {
         )}
       </KeyboardAvoidingView>
 
+      {/* Toast */}
+      <ToastComponent />
+
       {/* Processing Dialog */}
       <ProcessingDialog
         visible={isDialogOpen}
         item={currentItem}
         onClose={closeDialog}
-        onComplete={handleComplete}
+        onComplete={handleProcessComplete}
       />
     </SafeAreaView>
   );

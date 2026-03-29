@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import {useItemsByCategory, useItemActions} from '@hooks/useItems';
+import {useToast} from '@components/Toast';
 import Item from '@services/database/models/Item';
 import {itemRepository} from '@services/database/repositories/ItemRepository';
 
@@ -22,6 +23,7 @@ export default function NextActionsScreen() {
   const {items, isLoading} = useItemsByCategory('nextActions');
   const {deleteItem, completeItem, directAddToCategory, isLoading: isSaving} =
     useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
   const [completedCount, setCompletedCount] = useState(0);
 
@@ -41,15 +43,22 @@ export default function NextActionsScreen() {
     const text = inputText.trim();
     if (!text) return;
 
-    await directAddToCategory(text, 'nextActions', {
-      nextAction: text,
-    });
-    setInputText('');
+    try {
+      await directAddToCategory(text, 'nextActions', {nextAction: text});
+      setInputText('');
+      showToast('Action added', 'success');
+    } catch {
+      showToast('Failed to add action', 'error');
+    }
   };
 
   const handleComplete = async (item: Item) => {
-    await completeItem(item);
-    // Count will auto-update via useEffect when items changes
+    try {
+      await completeItem(item);
+      showToast('Action completed', 'success');
+    } catch {
+      showToast('Failed to complete action', 'error');
+    }
   };
 
   const handleDelete = (item: Item) => {
@@ -58,7 +67,14 @@ export default function NextActionsScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => deleteItem(item),
+        onPress: async () => {
+          try {
+            await deleteItem(item);
+            showToast('Action deleted', 'success');
+          } catch {
+            showToast('Failed to delete action', 'error');
+          }
+        },
       },
     ]);
   };
@@ -184,6 +200,9 @@ export default function NextActionsScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Toast */}
+      <ToastComponent />
     </SafeAreaView>
   );
 }

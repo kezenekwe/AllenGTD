@@ -14,6 +14,7 @@ import {
   Linking,
 } from 'react-native';
 import {useItemsByCategory, useItemActions} from '@hooks/useItems';
+import {useToast} from '@components/Toast';
 import {database} from '@services/database';
 import Item from '@services/database/models/Item';
 
@@ -66,6 +67,7 @@ function parseTextWithUrls(text: string): TextSegment[] {
 export default function ReferenceScreen() {
   const {items, isLoading} = useItemsByCategory('reference');
   const {directAddToCategory, isLoading: isSaving} = useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
 
   // ─── Stats ────────────────────────────────────────────────────────────
@@ -79,8 +81,13 @@ export default function ReferenceScreen() {
     const text = inputText.trim();
     if (!text) return;
 
-    await directAddToCategory(text, 'reference');
-    setInputText('');
+    try {
+      await directAddToCategory(text, 'reference');
+      setInputText('');
+      showToast('Added to reference', 'success');
+    } catch {
+      showToast('Failed to add reference', 'error');
+    }
   };
 
   const handleOpenUrl = async (url: string) => {
@@ -111,9 +118,10 @@ export default function ReferenceScreen() {
               await database.write(async () => {
                 await item.markAsDeleted();
               });
+              showToast('Reference deleted', 'success');
             } catch (error) {
               console.error('Error deleting item:', error);
-              Alert.alert('Error', 'Failed to delete item');
+              showToast('Failed to delete reference', 'error');
             }
           },
         },
@@ -262,6 +270,9 @@ export default function ReferenceScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Toast */}
+      <ToastComponent />
     </SafeAreaView>
   );
 }

@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import {useItemsByCategory, useItemActions} from '@hooks/useItems';
+import {useToast} from '@components/Toast';
 import {database} from '@services/database';
 import Item from '@services/database/models/Item';
 
@@ -21,6 +22,7 @@ import Item from '@services/database/models/Item';
 export default function SomedayScreen() {
   const {items, isLoading} = useItemsByCategory('someday');
   const {directAddToCategory, moveToCategory, isLoading: isSaving} = useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
 
   // ─── Stats ────────────────────────────────────────────────────────────
@@ -33,8 +35,13 @@ export default function SomedayScreen() {
     const text = inputText.trim();
     if (!text) return;
 
-    await directAddToCategory(text, 'someday');
-    setInputText('');
+    try {
+      await directAddToCategory(text, 'someday');
+      setInputText('');
+      showToast('Added to someday', 'success');
+    } catch {
+      showToast('Failed to add idea', 'error');
+    }
   };
 
   const handleActivate = (item: Item) => {
@@ -48,9 +55,10 @@ export default function SomedayScreen() {
           onPress: async () => {
             try {
               await moveToCategory(item, 'inbox');
+              showToast('Moved to inbox', 'success');
             } catch (error) {
               console.error('Error activating item:', error);
-              Alert.alert('Error', 'Failed to activate item');
+              showToast('Failed to activate idea', 'error');
             }
           },
         },
@@ -72,9 +80,10 @@ export default function SomedayScreen() {
               await database.write(async () => {
                 await item.markAsDeleted();
               });
+              showToast('Item deleted', 'success');
             } catch (error) {
               console.error('Error deleting item:', error);
-              Alert.alert('Error', 'Failed to delete item');
+              showToast('Failed to delete item', 'error');
             }
           },
         },
@@ -182,6 +191,9 @@ export default function SomedayScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Toast */}
+      <ToastComponent />
     </SafeAreaView>
   );
 }

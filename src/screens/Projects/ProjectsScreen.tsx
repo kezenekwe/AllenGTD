@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import {useProjectsWithSteps, ProjectWithSteps} from '@hooks/useProjectsWithSteps';
 import {useItemActions} from '@hooks/useItems';
+import {useToast} from '@components/Toast';
 import {database} from '@services/database';
 
 // ─── ProjectsScreen ────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ import {database} from '@services/database';
 export default function ProjectsScreen() {
   const {items, isLoading} = useProjectsWithSteps();
   const {directAddToCategory, isLoading: isSaving} = useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(),
@@ -46,14 +48,18 @@ export default function ProjectsScreen() {
       .filter(s => s.trim())
       .map(s => s.trim());
 
-    await directAddToCategory(text, 'projects', {
-      projectPlan: planText || null,
-      steps: steps.length > 0 ? steps : undefined,
-    });
-
-    setInputText('');
-    setPlanText('');
-    setShowPlanDialog(false);
+    try {
+      await directAddToCategory(text, 'projects', {
+        projectPlan: planText || null,
+        steps: steps.length > 0 ? steps : undefined,
+      });
+      setInputText('');
+      setPlanText('');
+      setShowPlanDialog(false);
+      showToast('Project created', 'success');
+    } catch {
+      showToast('Failed to create project', 'error');
+    }
   };
 
   const handleCancelDialog = () => {
@@ -86,9 +92,10 @@ export default function ProjectsScreen() {
               await Promise.all(steps.map(step => step.markAsDeleted()));
               await item.markAsDeleted();
             });
+            showToast('Project deleted', 'success');
           } catch (error) {
             console.error('Error deleting project:', error);
-            Alert.alert('Error', 'Failed to delete project');
+            showToast('Failed to delete project', 'error');
           }
         },
       },
@@ -260,6 +267,9 @@ export default function ProjectsScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Toast */}
+      <ToastComponent />
 
       {/* Plan Dialog */}
       {showPlanDialog && (

@@ -14,6 +14,7 @@ import {
   Linking,
 } from 'react-native';
 import {useItemActions} from '@hooks/useItems';
+import {useToast} from '@components/Toast';
 import {database, itemsCollection} from '@services/database';
 import Item from '@services/database/models/Item';
 import {Q} from '@nozbe/watermelondb';
@@ -24,6 +25,7 @@ export default function WaitingForScreen() {
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const {directAddToCategory, completeItem, isLoading: isSaving} = useItemActions();
+  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
   const [showPersonDialog, setShowPersonDialog] = useState(false);
   const [personText, setPersonText] = useState('');
@@ -69,13 +71,15 @@ export default function WaitingForScreen() {
     const person = personText.trim();
     if (!text || !person) return;
 
-    await directAddToCategory(text, 'waiting', {
-      waitingFor: person,
-    });
-
-    setInputText('');
-    setPersonText('');
-    setShowPersonDialog(false);
+    try {
+      await directAddToCategory(text, 'waiting', {waitingFor: person});
+      setInputText('');
+      setPersonText('');
+      setShowPersonDialog(false);
+      showToast('Added to waiting for', 'success');
+    } catch {
+      showToast('Failed to add item', 'error');
+    }
   };
 
   const handleCancelDialog = () => {
@@ -84,7 +88,12 @@ export default function WaitingForScreen() {
   };
 
   const handleComplete = async (item: Item) => {
-    await completeItem(item);
+    try {
+      await completeItem(item);
+      showToast('Marked as received', 'success');
+    } catch {
+      showToast('Failed to complete item', 'error');
+    }
   };
 
   const handleDelete = (item: Item) => {
@@ -98,9 +107,10 @@ export default function WaitingForScreen() {
             await database.write(async () => {
               await item.markAsDeleted();
             });
+            showToast('Item deleted', 'success');
           } catch (error) {
             console.error('Error deleting item:', error);
-            Alert.alert('Error', 'Failed to delete item');
+            showToast('Failed to delete item', 'error');
           }
         },
       },
@@ -276,6 +286,9 @@ export default function WaitingForScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Toast */}
+      <ToastComponent />
 
       {/* Person Dialog */}
       {showPersonDialog && (
