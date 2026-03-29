@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -13,18 +13,43 @@ import {
   Platform,
   Linking,
 } from 'react-native';
-import {useItemsByCategory, useItemActions} from '@hooks/useItems';
-import {database} from '@services/database';
+import {useItemActions} from '@hooks/useItems';
+import {database, itemsCollection} from '@services/database';
 import Item from '@services/database/models/Item';
+import {Q} from '@nozbe/watermelondb';
 
 // ─── WaitingForScreen ──────────────────────────────────────────────────────
 
 export default function WaitingForScreen() {
-  const {items, isLoading} = useItemsByCategory('waiting');
-  const {directAddToCategory, completeItem: complete, isLoading: isSaving} = useItemActions();
+  const [items, setItems] = useState<Item[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const {directAddToCategory, completeItem, isLoading: isSaving} = useItemActions();
   const [inputText, setInputText] = useState('');
   const [showPersonDialog, setShowPersonDialog] = useState(false);
   const [personText, setPersonText] = useState('');
+
+  // ─── Custom Observable (includes both active and completed) ──────────────
+
+  useEffect(() => {
+    const subscription = itemsCollection
+      .query(
+        Q.where('category', 'waiting'),
+        Q.sortBy('created_at', Q.desc),
+      )
+      .observe()
+      .subscribe({
+        next: updatedItems => {
+          setItems(updatedItems);
+          setIsLoading(false);
+        },
+        error: err => {
+          console.error('Error observing waiting items:', err);
+          setIsLoading(false);
+        },
+      });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // ─── Stats ────────────────────────────────────────────────────────────
 
@@ -59,7 +84,7 @@ export default function WaitingForScreen() {
   };
 
   const handleComplete = async (item: Item) => {
-    await complete(item);
+    await completeItem(item);
   };
 
   const handleDelete = (item: Item) => {
@@ -247,6 +272,7 @@ export default function WaitingForScreen() {
             renderItem={renderItem}
             ListEmptyComponent={renderEmpty}
             contentContainerStyle={styles.list}
+            extraData={items.map(i => i.status).join(',')} // Re-render on status changes
           />
         )}
       </KeyboardAvoidingView>
