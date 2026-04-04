@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,11 @@ import {useGTDWorkflow} from '@hooks/useGTDWorkflow';
 import {useToast} from '@components/Toast';
 import Item from '@services/database/models/Item';
 import ProcessingDialog from '@components/workflow/ProcessingDialog';
+import {
+  getWeeklyReviewPref,
+  enableWeeklyReview,
+  disableWeeklyReview,
+} from '@services/notifications/weeklyReview';
 
 // ─── InboxScreen ───────────────────────────────────────────────────────────
 
@@ -34,6 +39,33 @@ export default function InboxScreen() {
   } = useGTDWorkflow();
   
   const [inputText, setInputText] = useState('');
+  const [showReviewBanner, setShowReviewBanner] = useState(false);
+
+  useEffect(() => {
+    getWeeklyReviewPref().then(pref => {
+      if (pref === null) setShowReviewBanner(true);
+    });
+  }, []);
+
+  const handleEnableReview = async () => {
+    setShowReviewBanner(false);
+    const granted = await enableWeeklyReview();
+    if (granted) {
+      showToast('Weekly review reminder set for Fridays at 4pm', 'success');
+    } else {
+      showToast('Could not schedule notification', 'error');
+    }
+  };
+
+  const handleLaterReview = () => {
+    // Just hide for this session — will reappear next launch
+    setShowReviewBanner(false);
+  };
+
+  const handleDismissReview = async () => {
+    setShowReviewBanner(false);
+    await disableWeeklyReview();
+  };
 
   // ─── Handlers ─────────────────────────────────────────────────────────
 
@@ -154,6 +186,33 @@ export default function InboxScreen() {
           Capture everything that comes to mind. Process each item to determine
           what it is and where it belongs.
         </Text>
+
+        {/* Weekly review prompt */}
+        {showReviewBanner && (
+          <View style={styles.reviewBanner}>
+            <Text style={styles.reviewBannerTitle}>Weekly review reminders</Text>
+            <Text style={styles.reviewBannerBody}>
+              Get a nudge every Friday at 4pm to process your inbox and review your projects.
+            </Text>
+            <View style={styles.reviewBannerActions}>
+              <TouchableOpacity
+                style={styles.reviewBannerDecline}
+                onPress={handleLaterReview}>
+                <Text style={styles.reviewBannerDeclineText}>Ask me later</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.reviewBannerEnable}
+                onPress={handleEnableReview}>
+                <Text style={styles.reviewBannerEnableText}>Enable</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.reviewBannerDismiss}
+              onPress={handleDismissReview}>
+              <Text style={styles.reviewBannerDismissText}>Don't ask again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Item list */}
         {isLoading ? (
@@ -323,6 +382,63 @@ const styles = StyleSheet.create({
   },
   trashIcon: {
     fontSize: 16,
+  },
+  reviewBanner: {
+    margin: 12,
+    marginBottom: 0,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    backgroundColor: '#fafafa',
+  },
+  reviewBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  reviewBannerBody: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  reviewBannerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+  },
+  reviewBannerDecline: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  reviewBannerDeclineText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  reviewBannerEnable: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
+    backgroundColor: '#000',
+  },
+  reviewBannerEnableText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  reviewBannerDismiss: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  reviewBannerDismissText: {
+    fontSize: 11,
+    color: '#bbb',
   },
   emptyState: {
     alignItems: 'center',

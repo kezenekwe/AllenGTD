@@ -75,6 +75,7 @@ export class ItemRepository {
       projectPlan?: string;
       steps?: string[];
       hasCalendar?: boolean;
+      calendarEventId?: string;
     },
   ): Promise<Item> {
     return database.write(async () => {
@@ -92,6 +93,9 @@ export class ItemRepository {
         }
         if (extraFields?.hasCalendar !== undefined) {
           i.hasCalendar = extraFields.hasCalendar;
+        }
+        if (extraFields?.calendarEventId !== undefined) {
+          i.calendarEventId = extraFields.calendarEventId;
         }
       });
 
@@ -120,6 +124,15 @@ export class ItemRepository {
   async delete(item: Item): Promise<void> {
     await database.write(async () => {
       await item.markAsDeleted(); // soft delete
+    });
+  }
+
+  async clearCalendar(item: Item): Promise<void> {
+    await database.write(async () => {
+      await item.update(i => {
+        i.hasCalendar = false;
+        i.calendarEventId = null;
+      });
     });
   }
 

@@ -48,9 +48,12 @@ export interface ProjectStep {
 export type WorkflowStep =
   | 'what-is-it'
   | 'is-actionable'
+  | 'not-actionable'
+  | 'action-type'
   | 'project-or-action'
   | 'create-project'
   | 'next-action'
+  | 'next-action-calendar'
   | 'delegate'
   | 'defer';
 

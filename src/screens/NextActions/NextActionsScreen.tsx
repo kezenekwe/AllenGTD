@@ -142,18 +142,6 @@ export default function NextActionsScreen() {
           <Text style={styles.subtitle}>Things you can do now</Text>
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{items.length}</Text>
-            <Text style={styles.statLabel}>Actions</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{completedCount}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-        </View>
-
         {/* Quick Add */}
         <View style={styles.quickAdd}>
           <TextInput

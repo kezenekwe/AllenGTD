@@ -28,6 +28,9 @@ export default class Item extends Model {
   @field('waiting_for') waitingFor!: string | null;
   @field('project_plan') projectPlan!: string | null;
   @field('has_calendar') hasCalendar!: boolean;
+  @field('project_id') projectId?: string | null;
+  @field('project_step_id') projectStepId?: string | null;
+  @field('calendar_event_id') calendarEventId?: string | null;
 
   // ─── Sync Fields ────────────────────────────────────────────────────────
 

@@ -211,18 +211,6 @@ export default function ReferenceScreen() {
           </View>
         </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{totalCount}</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{urlCount}</Text>
-            <Text style={styles.statLabel}>With Links</Text>
-          </View>
-        </View>
-
         {/* Quick Add */}
         <View style={styles.quickAdd}>
           <TextInput
@@ -234,7 +222,6 @@ export default function ReferenceScreen() {
             onSubmitEditing={handleAdd}
             returnKeyType="done"
             editable={!isSaving}
-            multiline
           />
           <TouchableOpacity
             style={[styles.addButton, isSaving && styles.addButtonDisabled]}

@@ -28,7 +28,7 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
   'what-is-it': {
     step: 'what-is-it',
     title: 'Process Item',
-    question: 'What is it?',
+    question: 'Is this actionable?',
     showExit: true,
     buttons: [
       {
@@ -37,17 +37,33 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
         nextStep: 'is-actionable',
       },
       {
-        label: "It's reference material",
-        emoji: '📚',
-        action: 'reference',
+        label: "It's not actionable",
+        emoji: '✗',
+        nextStep: 'not-actionable',
       },
+    ],
+  },
+
+  'not-actionable': {
+    step: 'not-actionable',
+    title: 'Not Actionable',
+    question: 'Where does it belong?',
+    showBack: true,
+    showExit: true,
+    backTo: 'what-is-it',
+    buttons: [
       {
         label: 'Someday/Maybe',
         emoji: '💭',
         action: 'someday',
       },
       {
-        label: "It's trash",
+        label: 'Reference material',
+        emoji: '📚',
+        action: 'reference',
+      },
+      {
+        label: 'Trash it',
         emoji: '🗑️',
         action: 'trash',
       },
@@ -68,7 +84,23 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
         action: 'complete',
       },
       {
-        label: "No — It's a project",
+        label: 'No — it takes longer',
+        emoji: '🕐',
+        nextStep: 'action-type',
+      },
+    ],
+  },
+
+  'action-type': {
+    step: 'action-type',
+    title: 'What should happen with it?',
+    question: 'How do you want to handle this?',
+    showBack: true,
+    showExit: true,
+    backTo: 'is-actionable',
+    buttons: [
+      {
+        label: "It's a project",
         emoji: '📋',
         nextStep: 'project-or-action',
       },
@@ -137,8 +169,21 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
         label: 'Add to Next Actions',
         emoji: '⚡',
       },
+    ],
+  },
+
+  'next-action-calendar': {
+    step: 'next-action-calendar',
+    title: 'Schedule It',
+    question: "What's the next physical action?",
+    showBack: true,
+    showExit: true,
+    backTo: 'defer',
+    inputType: 'text',
+    inputPlaceholder: 'e.g., Call John to discuss budget',
+    buttons: [
       {
-        label: 'Add to Next Actions + Calendar',
+        label: 'Add to Calendar',
         emoji: '📅',
       },
     ],
@@ -167,12 +212,17 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
     question: 'When do you want to do this?',
     showBack: true,
     showExit: true,
-    backTo: 'is-actionable',
+    backTo: 'action-type',
     buttons: [
       {
-        label: 'Add to Next Actions',
+        label: 'As soon as I can (Add to Next Actions)',
         emoji: '⚡',
         nextStep: 'next-action',
+      },
+      {
+        label: 'At a specific time (Add to Calendar)',
+        emoji: '📅',
+        nextStep: 'next-action-calendar',
       },
     ],
   },

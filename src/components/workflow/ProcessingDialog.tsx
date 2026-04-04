@@ -143,13 +143,15 @@ export default function ProcessingDialog({
         break;
 
       case 'next-action':
-        // Check if calendar button was pressed (index 1)
-        const hasCalendar = buttonIndex === 1;
         onComplete('moveToCategory', {
           category: 'nextActions',
           nextAction: value,
-          hasCalendar,
+          hasCalendar: false,
         } as any);
+        break;
+
+      case 'next-action-calendar':
+        onComplete('scheduleOnly', {nextAction: value} as any);
         break;
 
       case 'delegate':

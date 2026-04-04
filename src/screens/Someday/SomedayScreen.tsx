@@ -155,7 +155,6 @@ export default function SomedayScreen() {
             onSubmitEditing={handleAdd}
             returnKeyType="done"
             editable={!isSaving}
-            multiline
           />
           <TouchableOpacity
             style={[styles.addButton, isSaving && styles.addButtonDisabled]}

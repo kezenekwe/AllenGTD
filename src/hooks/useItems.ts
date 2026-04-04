@@ -1,12 +1,14 @@
 import {useState, useEffect} from 'react';
 import {itemRepository} from '@services/database/repositories/ItemRepository';
+import {itemsCollection, stepsCollection, database} from '@services/database';
 import Item from '@services/database/models/Item';
-import {GTDCategory} from '@types/index';
-import {database, itemsCollection, stepsCollection} from '@services/database';
+import type {GTDCategory} from '@services/database/models/Item';
+
+export {useItemsByCategory, useInboxItems, useItemActions};
 
 // ─── useItemsByCategory ────────────────────────────────────────────────────
 
-export function useItemsByCategory(category: GTDCategory) {
+function useItemsByCategory(category: GTDCategory) {
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,7 +34,7 @@ export function useItemsByCategory(category: GTDCategory) {
 
 // ─── useInboxItems ─────────────────────────────────────────────────────────
 
-export function useInboxItems() {
+function useInboxItems() {
   return useItemsByCategory('inbox');
 }
 
@@ -97,9 +99,11 @@ export function useItemActions() {
 
         const preparedSteps = (extras?.steps ?? []).map((stepText, i) =>
           stepsCollection.prepareCreate(step => {
-            step.projectId = preparedItem.id;
+            // Use _raw to set the foreign key directly
+            step._raw.project_id = preparedItem.id;
             step.stepText = stepText;
             step.stepOrder = i;
+            step.isCompleted = false;
           }),
         );
 

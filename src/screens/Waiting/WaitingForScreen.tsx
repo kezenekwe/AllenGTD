@@ -14,49 +14,38 @@ import {
   Linking,
 } from 'react-native';
 import {useItemActions} from '@hooks/useItems';
-import {useToast} from '@components/Toast';
-import {database, itemsCollection} from '@services/database';
+import {database} from '@services/database';
 import Item from '@services/database/models/Item';
 import {Q} from '@nozbe/watermelondb';
 
-// ─── WaitingForScreen ──────────────────────────────────────────────────────
+// ─── WaitingForScreen ─────────────────────────────────────────────────────
 
 export default function WaitingForScreen() {
+  const {directAddToCategory, completeItem: complete, isLoading: isSaving} = useItemActions();
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const {directAddToCategory, completeItem, isLoading: isSaving} = useItemActions();
-  const {showToast, ToastComponent} = useToast();
   const [inputText, setInputText] = useState('');
   const [showPersonDialog, setShowPersonDialog] = useState(false);
   const [personText, setPersonText] = useState('');
 
-  // ─── Custom Observable (includes both active and completed) ──────────────
+  // ─── Custom Observable for Active Items Only ─────────────────────────
 
   useEffect(() => {
-    const subscription = itemsCollection
+    const subscription = database
+      .get<Item>('items')
       .query(
         Q.where('category', 'waiting'),
+        Q.where('status', 'active'),
         Q.sortBy('created_at', Q.desc),
       )
       .observe()
-      .subscribe({
-        next: updatedItems => {
-          setItems(updatedItems);
-          setIsLoading(false);
-        },
-        error: err => {
-          console.error('Error observing waiting items:', err);
-          setIsLoading(false);
-        },
+      .subscribe(fetchedItems => {
+        setItems(fetchedItems);
+        setIsLoading(false);
       });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // ─── Stats ────────────────────────────────────────────────────────────
-
-  const activeCount = items.filter(i => i.status === 'active').length;
-  const completedCount = items.filter(i => i.status === 'completed').length;
 
   // ─── Handlers ─────────────────────────────────────────────────────────
 
@@ -71,15 +60,13 @@ export default function WaitingForScreen() {
     const person = personText.trim();
     if (!text || !person) return;
 
-    try {
-      await directAddToCategory(text, 'waiting', {waitingFor: person});
-      setInputText('');
-      setPersonText('');
-      setShowPersonDialog(false);
-      showToast('Added to waiting for', 'success');
-    } catch {
-      showToast('Failed to add item', 'error');
-    }
+    await directAddToCategory(text, 'waiting', {
+      waitingFor: person,
+    });
+
+    setInputText('');
+    setPersonText('');
+    setShowPersonDialog(false);
   };
 
   const handleCancelDialog = () => {
@@ -88,29 +75,23 @@ export default function WaitingForScreen() {
   };
 
   const handleComplete = async (item: Item) => {
-    try {
-      await completeItem(item);
-      showToast('Marked as received', 'success');
-    } catch {
-      showToast('Failed to complete item', 'error');
-    }
+    await complete(item);
   };
 
   const handleDelete = (item: Item) => {
-    Alert.alert('Delete item?', `"${item.text}"`, [
+    Alert.alert('Remove item?', `"${item.text}"`, [
       {text: 'Cancel', style: 'cancel'},
       {
-        text: 'Delete',
+        text: 'Remove',
         style: 'destructive',
         onPress: async () => {
           try {
             await database.write(async () => {
               await item.markAsDeleted();
             });
-            showToast('Item deleted', 'success');
           } catch (error) {
             console.error('Error deleting item:', error);
-            showToast('Failed to delete item', 'error');
+            Alert.alert('Error', 'Failed to remove item');
           }
         },
       },
@@ -143,18 +124,10 @@ export default function WaitingForScreen() {
   // ─── Render ───────────────────────────────────────────────────────────
 
   const renderItem = ({item}: {item: Item}) => {
-    const isCompleted = item.status === 'completed';
-
     return (
-      <View style={[styles.card, isCompleted && styles.cardCompleted]}>
+      <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text
-            style={[
-              styles.itemText,
-              isCompleted && styles.itemTextCompleted,
-            ]}>
-            {item.text}
-          </Text>
+          <Text style={styles.itemText}>{item.text}</Text>
         </View>
 
         {/* Waiting For Badge */}
@@ -169,32 +142,23 @@ export default function WaitingForScreen() {
         )}
 
         {/* Action Buttons */}
-        {!isCompleted && (
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={styles.followUpButton}
-              onPress={() => handleFollowUp(item)}>
-              <Text style={styles.followUpButtonText}>📅 Follow-up</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => handleComplete(item)}>
-              <Text style={styles.completeButtonText}>✓ Complete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDelete(item)}>
-              <Text style={styles.deleteButtonText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Completed State */}
-        {isCompleted && (
-          <View style={styles.completedBadge}>
-            <Text style={styles.completedBadgeText}>✓ Completed</Text>
-          </View>
-        )}
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.followUpButton}
+            onPress={() => handleFollowUp(item)}>
+            <Text style={styles.followUpButtonText}>📅 Follow-up</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.completeButton}
+            onPress={() => handleComplete(item)}>
+            <Text style={styles.completeButtonText}>✓ Complete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDelete(item)}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -222,20 +186,8 @@ export default function WaitingForScreen() {
               <Text style={styles.subtitle}>Delegated & tracking</Text>
             </View>
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{activeCount}</Text>
+              <Text style={styles.countText}>{items.length}</Text>
             </View>
-          </View>
-        </View>
-
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{activeCount}</Text>
-            <Text style={styles.statLabel}>Waiting</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{completedCount}</Text>
-            <Text style={styles.statLabel}>Received</Text>
           </View>
         </View>
 
@@ -282,13 +234,9 @@ export default function WaitingForScreen() {
             renderItem={renderItem}
             ListEmptyComponent={renderEmpty}
             contentContainerStyle={styles.list}
-            extraData={items.map(i => i.status).join(',')} // Re-render on status changes
           />
         )}
       </KeyboardAvoidingView>
-
-      {/* Toast */}
-      <ToastComponent />
 
       {/* Person Dialog */}
       {showPersonDialog && (
@@ -379,33 +327,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '600',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#999',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   quickAdd: {
     flexDirection: 'row',
     gap: 8,
@@ -474,10 +395,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 8,
   },
-  cardCompleted: {
-    backgroundColor: '#f9f9f9',
-    opacity: 0.6,
-  },
   cardHeader: {
     marginBottom: 8,
   },
@@ -486,10 +403,6 @@ const styles = StyleSheet.create({
     color: '#000',
     lineHeight: 22,
     fontWeight: '500',
-  },
-  itemTextCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#999',
   },
   metaContainer: {
     flexDirection: 'row',
@@ -554,20 +467,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     fontWeight: '500',
-  },
-  completedBadge: {
-    backgroundColor: '#e8f5e9',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#c8e6c9',
-  },
-  completedBadgeText: {
-    fontSize: 12,
-    color: '#2e7d32',
-    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

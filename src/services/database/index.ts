@@ -1,6 +1,7 @@
 import {Database} from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import {schema} from './schema';
+import {migrations} from './migrations';
 import Item from './models/Item';
 import ProjectStep from './models/ProjectStep';
 
@@ -9,7 +10,7 @@ import ProjectStep from './models/ProjectStep';
 
 const adapter = new SQLiteAdapter({
   schema,
-  // migrations: migrations, // add later when schema changes
+  migrations,
   jsi: true,                // Use JSI for better performance
   onSetUpError: error => {
     // DB failed to load — in production, show user a message

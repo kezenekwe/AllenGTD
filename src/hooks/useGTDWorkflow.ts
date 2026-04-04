@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import Item from '@services/database/models/Item';
 import {itemRepository} from '@services/database/repositories/ItemRepository';
+import {createCalendarEvent} from '@services/calendar/calendarService';
 import {GTDCategory} from '@types/index';
 
 // ─── useGTDWorkflow ────────────────────────────────────────────────────────
@@ -46,14 +47,30 @@ export function useGTDWorkflow() {
       switch (action) {
         case 'moveToCategory':
           if (payload?.category) {
+            let calendarEventId: string | null = null;
+            if (payload.hasCalendar && currentItem.text) {
+              calendarEventId = await createCalendarEvent({
+                title: currentItem.text,
+                notes: payload.nextAction || payload.projectPlan || undefined,
+              });
+            }
             await itemRepository.moveToCategory(currentItem, payload.category, {
               nextAction: payload.nextAction,
               waitingFor: payload.waitingFor,
               projectPlan: payload.projectPlan,
               steps: payload.steps,
               hasCalendar: payload.hasCalendar,
+              calendarEventId: calendarEventId || undefined,
             });
           }
+          break;
+
+        case 'scheduleOnly':
+          await createCalendarEvent({
+            title: currentItem.text,
+            notes: payload?.nextAction || undefined,
+          });
+          await itemRepository.delete(currentItem);
           break;
 
         case 'delete':
