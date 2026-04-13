@@ -268,7 +268,7 @@ export class ItemsService {
     const result = await query(
       `UPDATE items
        SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND user_id = $2
+       WHERE id = $1 AND user_id = $2 AND status != 'deleted'
        RETURNING id`,
       [itemId, userId]
     );

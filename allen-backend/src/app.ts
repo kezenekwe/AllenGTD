@@ -8,6 +8,7 @@ import { getMigrationStatus } from './db/migrations';
 import authRoutes from './routes/auth';
 import protectedRoutes from './routes/protected';
 import itemsRoutes from './routes/items';
+import syncRoutes from './routes/sync';
 
 // Load environment variables
 dotenv.config();
@@ -80,6 +81,7 @@ app.get('/migrations', async (_req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/auth', protectedRoutes);
 app.use('/api/items', itemsRoutes);
+app.use('/api/sync', syncRoutes);
 
 app.get('/api/v1', (_req: Request, res: Response) => {
   res.json({

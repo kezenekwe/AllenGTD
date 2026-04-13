@@ -9,6 +9,9 @@ import ProjectsScreen from '@screens/Projects/ProjectsScreen';
 import WaitingScreen from '@screens/Waiting/WaitingForScreen';
 import SomedayScreen from '@screens/Someday/SomedayScreen';
 import ReferenceScreen from '@screens/Reference/ReferenceScreen';
+import SyncTestScreen from '@screens/SyncTestScreen';
+import MultiDeviceSyncTestScreen from '@screens/MultiDeviceSyncTestScreen';
+import ConflictResolutionTestScreen from '@screens/ConflictResolutionTestScreen';
 
 // CalendarScreen is never rendered — the tab opens the user's calendar app directly
 const CalendarPlaceholder = () => <View />;
@@ -75,6 +78,9 @@ export type TabParamList = {
   Waiting: undefined;
   Someday: undefined;
   Reference: undefined;
+  SyncTest: undefined;
+  MultiDeviceSync: undefined;
+  ConflictResolution: undefined;
   Calendar: undefined;
 };
 
@@ -89,6 +95,9 @@ const tabIcon: Record<keyof TabParamList, string> = {
   Waiting: '⏳',
   Someday: '💭',
   Reference: '📚',
+  SyncTest: '🔄',
+  MultiDeviceSync: '📡',
+  ConflictResolution: '⚖️',
   Calendar: '📅',
 };
 
@@ -99,6 +108,9 @@ const tabLabel: Record<keyof TabParamList, string> = {
   Waiting: 'Waiting',
   Someday: 'Someday',
   Reference: 'Reference',
+  SyncTest: 'Sync',
+  MultiDeviceSync: 'Multi',
+  ConflictResolution: 'Conflict',
   Calendar: 'Calendar',
 };
 
@@ -153,6 +165,9 @@ export default function TabNavigator() {
       <Tab.Screen name="Waiting" component={WaitingScreen} />
       <Tab.Screen name="Someday" component={SomedayScreen} />
       <Tab.Screen name="Reference" component={ReferenceScreen} />
+      <Tab.Screen name="SyncTest" component={SyncTestScreen} />
+      <Tab.Screen name="MultiDeviceSync" component={MultiDeviceSyncTestScreen} />
+      <Tab.Screen name="ConflictResolution" component={ConflictResolutionTestScreen} />
       <Tab.Screen
         name="Calendar"
         component={CalendarPlaceholder}
