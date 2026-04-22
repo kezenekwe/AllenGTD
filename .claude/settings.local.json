@@ -10,7 +10,29 @@
       "Bash(npm start:*)",
       "Bash(npx react-native:*)",
       "Bash(xargs kill:*)",
-      "Bash(lsof -ti:8081)"
+      "Bash(lsof -ti:8081)",
+      "Bash(psql postgres:*)",
+      "Bash(npm run:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(psql -c \"SELECT current_user;\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"john@example.com\",\"password\":\"password123\",\"name\":\"John Doe\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"invalid-email\",\"password\":\"password123\",\"name\":\"John Doe\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"short\",\"name\":\"Test User\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"john@example.com\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"john@example.com\",\"password\":\"wrongpassword\"}')",
+      "Bash(curl -s -X GET http://localhost:3000/api/v1/auth/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNDA5MDNiMS0wNGU2LTQyOTEtOTM4Ni0yZGEyYjVhMGVkMmIiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJpYXQiOjE3NzUzNTkwNDksImV4cCI6MTc3NTk2Mzg0OX0.TldwzmYSelgokRp-SuNOcCWn0353xeCzmUOyvvIl2wM')",
+      "Bash(curl -s -X GET http://localhost:3000/api/v1/auth/me)",
+      "Bash(npm test:*)",
+      "Bash(curl -s -X GET http://localhost:3000/api/v1/auth/me -H \"Authorization: Bearer invalid_token_here\")",
+      "Bash(./test-auth.sh:*)",
+      "Bash(npx jest:*)",
+      "Bash(curl -s -X PATCH http://localhost:3000/api/items/85a99be5-308f-412e-b25f-9a5948e287ca -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNDA5MDNiMS0wNGU2LTQyOTEtOTM4Ni0yZGEyYjVhMGVkMmIiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJpYXQiOjE3NzUzMzM2NzEsImV4cCI6MTc3NTkzODQ3MX0.VlRUmfgRui5bgWgS4PKUGNKM2Ei3eOLoVff9tBPNB2g' -H 'Content-Type: application/json' -d '{:*)"
     ]
   }
 }

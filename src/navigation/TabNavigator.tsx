@@ -2,6 +2,7 @@ import React, {useCallback} from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Text, Linking, View, Alert, ActionSheetIOS, Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {setCalendarProvider} from '@services/calendar/calendarPreference';
 
 import InboxScreen from '@screens/Inbox/InboxScreen';
 import NextActionsScreen from '@screens/NextActions/NextActionsScreen';
@@ -9,9 +10,7 @@ import ProjectsScreen from '@screens/Projects/ProjectsScreen';
 import WaitingScreen from '@screens/Waiting/WaitingForScreen';
 import SomedayScreen from '@screens/Someday/SomedayScreen';
 import ReferenceScreen from '@screens/Reference/ReferenceScreen';
-import SyncTestScreen from '@screens/SyncTestScreen';
-import MultiDeviceSyncTestScreen from '@screens/MultiDeviceSyncTestScreen';
-import ConflictResolutionTestScreen from '@screens/ConflictResolutionTestScreen';
+import CalendarServiceTestScreen from '@screens/CalendarServiceTestScreen';
 
 // CalendarScreen is never rendered — the tab opens the user's calendar app directly
 const CalendarPlaceholder = () => <View />;
@@ -37,6 +36,8 @@ async function getCalendarApp(): Promise<CalendarApp | null> {
 
 async function saveCalendarApp(app: CalendarApp): Promise<void> {
   await AsyncStorage.setItem(PREF_KEY, app);
+  // Keep createCalendarEvent provider in sync
+  await setCalendarProvider(app === 'apple' ? 'native' : 'google');
 }
 
 function openCalendarApp(app: CalendarApp) {
@@ -78,9 +79,7 @@ export type TabParamList = {
   Waiting: undefined;
   Someday: undefined;
   Reference: undefined;
-  SyncTest: undefined;
-  MultiDeviceSync: undefined;
-  ConflictResolution: undefined;
+  CalendarServiceTest: undefined;
   Calendar: undefined;
 };
 
@@ -95,9 +94,7 @@ const tabIcon: Record<keyof TabParamList, string> = {
   Waiting: '⏳',
   Someday: '💭',
   Reference: '📚',
-  SyncTest: '🔄',
-  MultiDeviceSync: '📡',
-  ConflictResolution: '⚖️',
+  CalendarServiceTest: '🧪',
   Calendar: '📅',
 };
 
@@ -108,9 +105,7 @@ const tabLabel: Record<keyof TabParamList, string> = {
   Waiting: 'Waiting',
   Someday: 'Someday',
   Reference: 'Reference',
-  SyncTest: 'Sync',
-  MultiDeviceSync: 'Multi',
-  ConflictResolution: 'Conflict',
+  CalendarServiceTest: 'Cal Test',
   Calendar: 'Calendar',
 };
 
@@ -165,9 +160,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Waiting" component={WaitingScreen} />
       <Tab.Screen name="Someday" component={SomedayScreen} />
       <Tab.Screen name="Reference" component={ReferenceScreen} />
-      <Tab.Screen name="SyncTest" component={SyncTestScreen} />
-      <Tab.Screen name="MultiDeviceSync" component={MultiDeviceSyncTestScreen} />
-      <Tab.Screen name="ConflictResolution" component={ConflictResolutionTestScreen} />
+      <Tab.Screen name="CalendarServiceTest" component={CalendarServiceTestScreen} />
       <Tab.Screen
         name="Calendar"
         component={CalendarPlaceholder}

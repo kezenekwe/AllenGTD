@@ -16,6 +16,8 @@ import {useItemsByCategory, useItemActions} from '@hooks/useItems';
 import {useToast} from '@components/Toast';
 import Item from '@services/database/models/Item';
 import {itemRepository} from '@services/database/repositories/ItemRepository';
+import {createCalendarEvent} from '@services/calendar/CalendarService';
+import {database} from '@services/database';
 
 // ─── NextActionsScreen ─────────────────────────────────────────────────────
 
@@ -79,10 +81,48 @@ export default function NextActionsScreen() {
     ]);
   };
 
+  const handleLongPress = (item: Item) => {
+    if (item.hasCalendar) {
+      Alert.alert('Already on calendar', `"${item.text}" is already scheduled.`);
+      return;
+    }
+    Alert.alert(
+      'Add to Calendar',
+      `Schedule "${item.text}"?`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Add to Calendar',
+          onPress: () => addToCalendar(item),
+        },
+      ],
+    );
+  };
+
+  const addToCalendar = async (item: Item) => {
+    const eventId = await createCalendarEvent({
+      title: item.text,
+      notes: item.nextAction || undefined,
+    });
+    if (eventId) {
+      await database.write(async () => {
+        await item.update(i => {
+          i.hasCalendar = true;
+          (i as any).calendarEventId = eventId;
+        });
+      });
+      showToast('Added to calendar', 'success');
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────
 
   const renderItem = ({item}: {item: Item}) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onLongPress={() => handleLongPress(item)}
+      activeOpacity={0.85}
+      delayLongPress={400}>
       <View style={styles.cardHeader}>
         <Text style={styles.itemText}>{item.text}</Text>
       </View>
@@ -118,7 +158,7 @@ export default function NextActionsScreen() {
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderEmpty = () => (
@@ -174,6 +214,7 @@ export default function NextActionsScreen() {
           Single tasks that can be done now. Review regularly and take action
           on items as you have time and energy.
         </Text>
+        <Text style={styles.tipText}>💡 Hold an item to add it to your calendar</Text>
 
         {/* Item List */}
         {isLoading ? (
@@ -301,8 +342,15 @@ const styles = StyleSheet.create({
     color: '#999',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 4,
     lineHeight: 18,
+  },
+  tipText: {
+    fontSize: 12,
+    color: '#888',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    fontStyle: 'italic',
   },
   list: {
     padding: 12,

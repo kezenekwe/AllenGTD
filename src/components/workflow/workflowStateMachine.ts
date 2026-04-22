@@ -183,7 +183,7 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
     inputPlaceholder: 'e.g., Call John to discuss budget',
     buttons: [
       {
-        label: 'Add to Calendar',
+        label: 'Add to Next Actions + Calendar',
         emoji: '📅',
       },
     ],
@@ -220,7 +220,7 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, WorkflowStepConfig> = {
         nextStep: 'next-action',
       },
       {
-        label: 'At a specific time (Add to Calendar)',
+        label: 'At a specific time (Add to Next Actions + Calendar)',
         emoji: '📅',
         nextStep: 'next-action-calendar',
       },

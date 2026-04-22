@@ -1061,6 +1061,8 @@ PODS:
     - React
   - RNCAsyncStorage (1.24.0):
     - React-Core
+  - RNFS (2.20.0):
+    - React-Core
   - RNKeychain (8.2.0):
     - React-Core
   - RNNotifee (9.1.8):
@@ -1135,6 +1137,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - RNCalendarEvents (from `../node_modules/react-native-calendar-events`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - RNFS (from `../node_modules/react-native-fs`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -1252,6 +1255,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-calendar-events"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNFS:
+    :path: "../node_modules/react-native-fs"
   RNKeychain:
     :path: "../node_modules/react-native-keychain"
   RNNotifee:
@@ -1319,6 +1324,7 @@ SPEC CHECKSUMS:
   ReactCommon: b2d9a4d3c5a82ac14a0054ccdba9e6858fef873b
   RNCalendarEvents: f90f73666b6bcbb3cc8a491ffbb5e48c0db3de37
   RNCAsyncStorage: b6410dead2732b5c72a7fdb1ecb5651bbcf4674b
+  RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNKeychain: bbe2f6d5cc008920324acb49ef86ccc03d3b38e4
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNScreens: b12996ef8ef492d56d126400e8aef6e613c13ef6

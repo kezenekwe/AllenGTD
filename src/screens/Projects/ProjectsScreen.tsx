@@ -18,7 +18,7 @@ import {useItemActions} from '@hooks/useItems';
 import {database} from '@services/database';
 import ProjectStep from '@services/database/models/ProjectStep';
 import Item from '@services/database/models/Item';
-import {createCalendarEvent} from '@services/calendar/calendarService';
+import {createCalendarEvent} from '@services/calendar/CalendarService';
 
 // ─── ProjectsScreen ────────────────────────────────────────────────────────
 

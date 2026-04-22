@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import Item from '@services/database/models/Item';
 import {itemRepository} from '@services/database/repositories/ItemRepository';
-import {createCalendarEvent} from '@services/calendar/calendarService';
+import {createCalendarEvent} from '@services/calendar/CalendarService';
 import {GTDCategory} from '@types/index';
 
 // ─── useGTDWorkflow ────────────────────────────────────────────────────────
@@ -65,13 +65,18 @@ export function useGTDWorkflow() {
           }
           break;
 
-        case 'scheduleOnly':
-          await createCalendarEvent({
+        case 'scheduleOnly': {
+          const calendarEventId = await createCalendarEvent({
             title: currentItem.text,
             notes: payload?.nextAction || undefined,
           });
-          await itemRepository.delete(currentItem);
+          await itemRepository.moveToCategory(currentItem, 'nextActions', {
+            nextAction: payload?.nextAction,
+            hasCalendar: true,
+            calendarEventId: calendarEventId || undefined,
+          });
           break;
+        }
 
         case 'delete':
           await itemRepository.delete(currentItem);
@@ -84,7 +89,7 @@ export function useGTDWorkflow() {
 
       closeDialog();
     } catch (error) {
-      console.error('Error processing item:', error);
+      console.log('Error processing item:', error);
       // Could set error state here for user feedback
     } finally {
       setIsProcessing(false);

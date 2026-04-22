@@ -31,8 +31,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Allen GTD needs access to your calendar to create events for your tasks and projects.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Allen GTD needs access to your calendar to show and create events alongside your tasks.</string>
+	<string>Allen GTD needs access to your calendar to create events for your tasks and projects.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Allen GTD needs to create calendar events for your tasks.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>

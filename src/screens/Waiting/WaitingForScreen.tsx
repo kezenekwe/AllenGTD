@@ -11,12 +11,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Linking,
 } from 'react-native';
 import {useItemActions} from '@hooks/useItems';
 import {database} from '@services/database';
 import Item from '@services/database/models/Item';
 import {Q} from '@nozbe/watermelondb';
+import {createCalendarEvent} from '@services/calendar/CalendarService';
+
 
 // ─── WaitingForScreen ─────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export default function WaitingForScreen() {
   const [inputText, setInputText] = useState('');
   const [showPersonDialog, setShowPersonDialog] = useState(false);
   const [personText, setPersonText] = useState('');
+  
 
   // ─── Custom Observable for Active Items Only ─────────────────────────
 
@@ -98,34 +100,64 @@ export default function WaitingForScreen() {
     ]);
   };
 
-  const handleFollowUp = (item: Item) => {
-    const now = new Date();
-    const startDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
-    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 min meeting
+  // ─── Long Press ───────────────────────────────────────────────────────
 
-    const formatDate = (d: Date) => {
-      return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    };
+  const handleLongPress = (item: Item) => {
+    Alert.alert(item.text, undefined, [
+      {
+        text: 'Schedule Follow Up (Add to Calendar)',
+        onPress: () => addToCalendar(item),
+      },
+      {
+        text: 'Add to Next Actions',
+        onPress: () => addToNextActions(item),
+      },
+      {text: 'Cancel', style: 'cancel'},
+    ]);
+  };
 
-    const title = encodeURIComponent(`Follow up: ${item.text}`);
-    const description = encodeURIComponent(
-      `Follow up with ${item.waitingFor || 'team'} about: ${item.text}`,
-    );
-    const dates = `${formatDate(startDate)}/${formatDate(endDate)}`;
-
-    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&dates=${dates}`;
-
-    Linking.openURL(calendarUrl).catch(err => {
-      Alert.alert('Error', 'Could not open calendar');
-      console.error('Calendar error:', err);
+  const addToCalendar = async (item: Item) => {
+    const eventId = await createCalendarEvent({
+      title: `Follow up: ${item.text}`,
+      notes: `Check in with ${item.waitingFor || 'team'} about: ${item.text}`,
     });
+    if (eventId) {
+      await database.write(async () => {
+        await item.update(i => {
+          i.hasCalendar = true;
+          (i as any).calendarEventId = eventId;
+        });
+      });
+      Alert.alert('Added to Calendar', `Follow-up reminder set for "${item.text}"`);
+    }
+  };
+
+  const addToNextActions = async (item: Item) => {
+    try {
+      await database.write(async () => {
+        await database.get<Item>('items').create(newItem => {
+          newItem.text = `Follow up: ${item.text}`;
+          newItem.category = 'nextActions';
+          newItem.status = 'active';
+          newItem.nextAction = `Follow up with ${item.waitingFor || 'team'}`;
+        });
+      });
+      Alert.alert('Added to Next Actions', `"Follow up: ${item.text}" added`);
+    } catch (error) {
+      console.log('Error adding to next actions:', error);
+      Alert.alert('Error', 'Failed to add to Next Actions');
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────
 
   const renderItem = ({item}: {item: Item}) => {
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onLongPress={() => handleLongPress(item)}
+        delayLongPress={500}
+        activeOpacity={0.7}>
         <View style={styles.cardHeader}>
           <Text style={styles.itemText}>{item.text}</Text>
         </View>
@@ -141,13 +173,17 @@ export default function WaitingForScreen() {
           </View>
         )}
 
+        {/* Calendar Indicator */}
+        {item.hasCalendar && (
+          <View style={styles.metaContainer}>
+            <View style={[styles.metaTag, styles.calendarTag]}>
+              <Text style={styles.calendarText}>📅 Follow-up scheduled</Text>
+            </View>
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.followUpButton}
-            onPress={() => handleFollowUp(item)}>
-            <Text style={styles.followUpButtonText}>📅 Follow-up</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.completeButton}
             onPress={() => handleComplete(item)}>
@@ -159,7 +195,8 @@ export default function WaitingForScreen() {
             <Text style={styles.deleteButtonText}>Delete</Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+      </TouchableOpacity>
     );
   };
 
@@ -219,9 +256,8 @@ export default function WaitingForScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Items</Text>
         </View>
-        <Text style={styles.sectionDescription}>
-          Track delegated tasks and items you're waiting to receive. Set
-          follow-up reminders to check in.
+        <Text style={styles.tipText}>
+          💡 Hold an item to add to calendar or Next Actions
         </Text>
 
         {/* Item List */}
@@ -279,6 +315,7 @@ export default function WaitingForScreen() {
           </View>
         </View>
       )}
+
     </SafeAreaView>
   );
 }
@@ -372,13 +409,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
-  sectionDescription: {
+  tipText: {
     fontSize: 12,
-    color: '#999',
+    color: '#888',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
-    lineHeight: 18,
+    fontStyle: 'italic',
   },
   list: {
     padding: 12,
@@ -423,31 +460,30 @@ const styles = StyleSheet.create({
     color: '#f57c00',
     fontWeight: '500',
   },
+  metaTag: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  calendarTag: {
+    backgroundColor: '#f0f0f0',
+  },
+  calendarText: {
+    fontSize: 11,
+    color: '#000',
+    fontWeight: '500',
+  },
   cardActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  followUpButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 6,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  followUpButtonText: {
-    fontSize: 12,
-    color: '#000',
-    fontWeight: '500',
-  },
   completeButton: {
+    flex: 1,
     backgroundColor: '#000',
     borderRadius: 6,
-    paddingHorizontal: 16,
     paddingVertical: 8,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   completeButtonText: {
     fontSize: 12,
@@ -467,6 +503,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     fontWeight: '500',
+  },
+  longPressHint: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   emptyState: {
     alignItems: 'center',
@@ -562,5 +604,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     fontWeight: '600',
+  },
+  contextMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contextMenu: {
+    width: '80%',
+    maxWidth: 320,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  contextMenuTitle: {
+    fontSize: 14,
+    color: '#666',
+    padding: 16,
+    paddingBottom: 12,
+    textAlign: 'center',
+  },
+  contextMenuSectionTitle: {
+    fontSize: 12,
+    color: '#999',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  contextMenuDivider: {
+    height: 1,
+    backgroundColor: '#e5e5e5',
+  },
+  contextMenuItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  contextMenuItemText: {
+    fontSize: 16,
+    color: '#000',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  contextMenuDestructive: {
+    color: '#f44336',
+  },
+  contextMenuCancel: {
+    color: '#999',
   },
 });

@@ -121,7 +121,6 @@ class SyncService {
         errors: [],
       };
     } catch (error) {
-      console.error('Sync error:', error);
       return {
         pushed: 0,
         pulled: 0,
@@ -198,7 +197,6 @@ class SyncService {
 
       return { pulled: applied, conflicts };
     } catch (error) {
-      console.error('Pull changes error:', error);
       throw error;
     }
   }
@@ -396,7 +394,6 @@ class SyncService {
 
       return pushed;
     } catch (error) {
-      console.error('Push changes error:', error);
       throw error;
     }
   }
