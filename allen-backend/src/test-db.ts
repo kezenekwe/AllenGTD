@@ -1,4 +1,5 @@
-import pool, { query, testConnection } from './db';
+import { query, testConnection } from './db/connection';
+import pool from './db/connection';
 
 // ─── Test Database Connection ──────────────────────────────────────────────
 

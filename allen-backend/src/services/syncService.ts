@@ -1,5 +1,9 @@
 import { query } from '../db/connection';
 
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const SYNC_PAGE_SIZE = 500;
+
 // ─── Types ────────────────────────────────────────────────────────────────
 
 interface Item {
@@ -21,6 +25,7 @@ interface SyncResult {
   syncToken: string;
   timestamp: string;
   count: number;
+  hasMore: boolean;
 }
 
 interface SyncStatus {
@@ -53,9 +58,9 @@ export class SyncService {
     let params: any[];
 
     if (sinceTimestamp) {
-      // Get items modified since the timestamp
+      // Get items modified since the timestamp, capped to SYNC_PAGE_SIZE
       sql = `
-        SELECT 
+        SELECT
           id,
           user_id,
           text,
@@ -70,12 +75,13 @@ export class SyncService {
         FROM items
         WHERE user_id = $1 AND updated_at > $2
         ORDER BY updated_at ASC
+        LIMIT $3
       `;
-      params = [userId, sinceTimestamp];
+      params = [userId, sinceTimestamp, SYNC_PAGE_SIZE];
     } else {
-      // First sync - get all items
+      // First sync - paginated to avoid huge responses
       sql = `
-        SELECT 
+        SELECT
           id,
           user_id,
           text,
@@ -90,8 +96,9 @@ export class SyncService {
         FROM items
         WHERE user_id = $1
         ORDER BY updated_at ASC
+        LIMIT $2
       `;
-      params = [userId];
+      params = [userId, SYNC_PAGE_SIZE];
     }
 
     const result = await query(sql, params);
@@ -106,12 +113,15 @@ export class SyncService {
       syncToken,
       timestamp: syncToken,
       count: changes.length,
+      hasMore: changes.length === SYNC_PAGE_SIZE,
     };
   }
 
   /**
-   * Apply changes from client to server
-   * Handles conflict resolution (server wins for now)
+   * Apply changes from client to server.
+   *
+   * Optimized: existence check is batched (1 query instead of N),
+   * and new items are bulk-inserted with UNNEST (1 query instead of N).
    */
   async applyChanges(
     userId: string,
@@ -122,101 +132,114 @@ export class SyncService {
     let conflicts = 0;
     let errors = 0;
 
+    if (changes.length === 0) {
+      return { applied, conflicts, errors, syncToken: new Date().toISOString() };
+    }
+
+    // ─── 1. Batch existence check (1 query instead of N) ─────────────────
+    const changeIds = changes.map(c => c.id);
+    let existingMap = new Map<string, { id: string; updated_at: Date }>();
+
+    try {
+      const existingResult = await query(
+        'SELECT id, updated_at FROM items WHERE id = ANY($1::uuid[]) AND user_id = $2',
+        [changeIds, userId]
+      );
+      existingMap = new Map(existingResult.rows.map(r => [r.id, r]));
+    } catch (error) {
+      console.error('Batch existence check failed, treating all as new:', error);
+    }
+
+    // ─── 2. Classify changes into inserts vs updates ──────────────────────
+    const toInsert: any[] = [];
+    const toUpdate: any[] = [];
+
     for (const change of changes) {
-      try {
-        // Check if item exists
-        const existing = await query(
-          'SELECT id, updated_at FROM items WHERE id = $1 AND user_id = $2',
-          [change.id, userId]
-        );
-
-        if (existing.rows.length > 0) {
-          // Item exists - update it
-          // Check for conflicts (server was modified after client's last sync)
-          if (lastSyncToken) {
-            const serverUpdatedAt = new Date(existing.rows[0].updated_at);
-            const clientLastSync = new Date(lastSyncToken);
-
-            if (serverUpdatedAt > clientLastSync) {
-              // Conflict: Server was modified after client's last sync
-              // For now, server wins (skip client's change)
-              conflicts++;
-              continue;
-            }
+      const existing = existingMap.get(change.id);
+      if (existing) {
+        if (lastSyncToken) {
+          const serverUpdatedAt = new Date(existing.updated_at);
+          const clientLastSync = new Date(lastSyncToken);
+          if (serverUpdatedAt > clientLastSync) {
+            conflicts++;
+            continue;
           }
-
-          // Apply update
-          await query(
-            `UPDATE items
-             SET text = $1,
-                 category = $2,
-                 status = $3,
-                 next_action = $4,
-                 waiting_for = $5,
-                 project_plan = $6,
-                 has_calendar = $7,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $8 AND user_id = $9`,
-            [
-              change.text,
-              change.category,
-              change.status,
-              change.nextAction || null,
-              change.waitingFor || null,
-              change.projectPlan || null,
-              change.hasCalendar || false,
-              change.id,
-              userId,
-            ]
-          );
-          applied++;
-        } else {
-          // Item doesn't exist - create it
-          await query(
-            `INSERT INTO items (
-               id,
-               user_id,
-               text,
-               category,
-               status,
-               next_action,
-               waiting_for,
-               project_plan,
-               has_calendar,
-               created_at,
-               updated_at
-             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)`,
-            [
-              change.id,
-              userId,
-              change.text,
-              change.category,
-              change.status || 'active',
-              change.nextAction || null,
-              change.waitingFor || null,
-              change.projectPlan || null,
-              change.hasCalendar || false,
-              change.createdAt ? new Date(change.createdAt) : new Date(),
-            ]
-          );
-          applied++;
         }
+        toUpdate.push(change);
+      } else {
+        toInsert.push(change);
+      }
+    }
+
+    // ─── 3. Bulk INSERT new items (1 query instead of N) ──────────────────
+    if (toInsert.length > 0) {
+      try {
+        await query(
+          `INSERT INTO items
+             (id, user_id, text, category, status,
+              next_action, waiting_for, project_plan, has_calendar,
+              created_at, updated_at)
+           SELECT * FROM UNNEST(
+             $1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[],
+             $6::text[], $7::text[], $8::text[], $9::boolean[],
+             $10::timestamptz[], $11::timestamptz[]
+           )
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            toInsert.map(c => c.id),
+            toInsert.map(() => userId),
+            toInsert.map(c => c.text),
+            toInsert.map(c => c.category || 'inbox'),
+            toInsert.map(c => c.status || 'active'),
+            toInsert.map(c => c.nextAction   ?? null),
+            toInsert.map(c => c.waitingFor   ?? null),
+            toInsert.map(c => c.projectPlan  ?? null),
+            toInsert.map(c => c.hasCalendar  ?? false),
+            toInsert.map(c => c.createdAt ? new Date(c.createdAt) : new Date()),
+            toInsert.map(() => new Date()),
+          ]
+        );
+        applied += toInsert.length;
       } catch (error) {
-        console.error('Error applying change:', error);
+        console.error('Bulk insert failed:', error);
+        errors += toInsert.length;
+      }
+    }
+
+    // ─── 4. Individual UPDATEs (conflict logic requires per-row handling) ─
+    for (const change of toUpdate) {
+      try {
+        await query(
+          `UPDATE items
+             SET text          = $1,
+                 category      = $2,
+                 status        = $3,
+                 next_action   = $4,
+                 waiting_for   = $5,
+                 project_plan  = $6,
+                 has_calendar  = $7,
+                 updated_at    = CURRENT_TIMESTAMP
+           WHERE id = $8 AND user_id = $9`,
+          [
+            change.text,
+            change.category,
+            change.status,
+            change.nextAction  ?? null,
+            change.waitingFor  ?? null,
+            change.projectPlan ?? null,
+            change.hasCalendar ?? false,
+            change.id,
+            userId,
+          ]
+        );
+        applied++;
+      } catch (error) {
+        console.error('Update failed for item:', change.id, error);
         errors++;
       }
     }
 
-    // Generate new sync token
-    const syncToken = new Date().toISOString();
-
-    return {
-      applied,
-      conflicts,
-      errors,
-      syncToken,
-    };
+    return { applied, conflicts, errors, syncToken: new Date().toISOString() };
   }
 
   /**

@@ -3,23 +3,19 @@
 // This will be implemented in Task 3.2
 
 export class ItemService {
-  async getAllItems(userId: string) {
-    // TODO: Implement
+  async getAllItems(_userId: string) {
     return [];
   }
 
-  async createItem(userId: string, data: any) {
-    // TODO: Implement
+  async createItem(_userId: string, _data: any) {
     return null;
   }
 
-  async updateItem(userId: string, itemId: string, data: any) {
-    // TODO: Implement
+  async updateItem(_userId: string, _itemId: string, _data: any) {
     return null;
   }
 
-  async deleteItem(userId: string, itemId: string) {
-    // TODO: Implement
+  async deleteItem(_userId: string, _itemId: string) {
     return null;
   }
 }
