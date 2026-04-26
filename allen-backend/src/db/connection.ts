@@ -1,21 +1,44 @@
 import { Pool, PoolClient, PoolConfig, QueryResult } from 'pg';
 import dotenv from 'dotenv';
+import { createLogger, format, transports } from 'winston';
 
 dotenv.config();
 
-// ─── Database Configuration ────────────────────────────────────────────────
+// Lightweight local logger — avoids a circular dependency on config/logger
+const log = createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: process.env.NODE_ENV === 'production'
+    ? format.combine(format.timestamp(), format.json())
+    : format.combine(format.colorize(), format.simple()),
+  transports: [new transports.Console()],
+});
 
-const poolConfig: PoolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'allen_gtd',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+// ─── Database Configuration ────────────────────────────────────────────────
+// Prefer DATABASE_URL (provided by Render, Railway, Heroku, etc.).
+// Fall back to individual vars for local development.
+
+const BASE_POOL = {
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 };
+
+const poolConfig: PoolConfig = process.env.DATABASE_URL
+  ? {
+      ...BASE_POOL,
+      connectionString: process.env.DATABASE_URL,
+      // Render's managed Postgres uses TLS with a self-signed cert internally
+      ssl: { rejectUnauthorized: false },
+    }
+  : {
+      ...BASE_POOL,
+      host:     process.env.DB_HOST || 'localhost',
+      port:     parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME  || 'allen_gtd',
+      user:     process.env.DB_USER  || 'postgres',
+      password: process.env.DB_PASSWORD,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    };
 
 // ─── Create Connection Pool ────────────────────────────────────────────────
 
@@ -24,21 +47,15 @@ const pool = new Pool(poolConfig);
 // ─── Connection Event Handlers ─────────────────────────────────────────────
 
 pool.on('connect', () => {
-  console.log('✓ New database connection established');
-});
-
-pool.on('acquire', () => {
-  // Optional: Log when a client is acquired from pool
-  // console.log('Client acquired from pool');
+  log.debug('DB pool: new connection established');
 });
 
 pool.on('remove', () => {
-  console.log('⚠ Database connection removed from pool');
+  log.debug('DB pool: connection removed');
 });
 
 pool.on('error', (err) => {
-  console.error('✗ Unexpected database pool error:', err);
-  // Don't exit process - pool will handle reconnection
+  log.error('DB pool: unexpected error', { message: err.message });
 });
 
 // ─── Query Helper Functions ────────────────────────────────────────────────
@@ -55,19 +72,17 @@ export async function query(
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Query executed:', {
-        text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-        duration: `${duration}ms`,
-        rows: res.rowCount,
-      });
-    }
-    
+    log.debug('query', {
+      text: text.substring(0, 100) + (text.length > 100 ? '…' : ''),
+      ms: duration,
+      rows: res.rowCount,
+    });
+
     return res;
   } catch (error) {
-    console.error('Query error:', {
-      text: text.substring(0, 100),
-      error: error instanceof Error ? error.message : error,
+    log.error('query error', {
+      text:    text.substring(0, 100),
+      message: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
@@ -108,13 +123,11 @@ export async function transaction<T>(
 export async function testConnection(): Promise<boolean> {
   try {
     const res = await query('SELECT NOW() as now, current_database() as db');
-    const { now, db } = res.rows[0];
-    console.log(`✓ Database connection successful`);
-    console.log(`  Database: ${db}`);
-    console.log(`  Time: ${new Date(now).toISOString()}`);
+    const { db } = res.rows[0];
+    log.info('Database connection OK', { database: db });
     return true;
   } catch (error) {
-    console.error('✗ Database connection failed:', error);
+    log.error('Database connection failed', { message: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -151,9 +164,9 @@ export async function healthCheck(): Promise<{
  * Gracefully close all connections
  */
 export async function closePool(): Promise<void> {
-  console.log('Closing database connection pool...');
+  log.info('Closing database connection pool…');
   await pool.end();
-  console.log('✓ Database connections closed');
+  log.info('Database connections closed');
 }
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────

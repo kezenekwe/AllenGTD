@@ -1,84 +1,66 @@
-import dotenv from 'dotenv';
+import { config } from './config/env';
+import { logger } from './config/logger';
 import { testConnection, closePool } from './db/connection';
 import { runMigrations } from './db/migrations';
 import app from './app';
 
-// Load environment variables
-dotenv.config();
-
-const PORT = process.env.PORT || 3000;
+const { port, nodeEnv, isProd } = config;
 
 // ─── Database Initialization ───────────────────────────────────────────────
 
-async function initializeDatabase() {
-  console.log('');
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║                                        ║');
-  console.log('║   Database Migrations                  ║');
-  console.log('║                                        ║');
-  console.log('╚════════════════════════════════════════╝');
-  console.log('');
+async function initializeDatabase(): Promise<void> {
+  logger.info('Connecting to database…');
 
   const connected = await testConnection();
   if (!connected) {
-    console.error('✗ Cannot start server - database connection failed');
+    logger.error('Database connection failed — cannot start server');
     process.exit(1);
   }
 
   try {
     await runMigrations();
   } catch (error) {
-    console.error('✗ Cannot start server - migration failed');
+    logger.error('Migration failed — cannot start server', { error });
     process.exit(1);
   }
 }
 
 // ─── Start Server ──────────────────────────────────────────────────────────
 
-async function startServer() {
+async function startServer(): Promise<void> {
   try {
     await initializeDatabase();
 
-    app.listen(PORT, () => {
-      console.log('');
-      console.log('╔════════════════════════════════════════╗');
-      console.log('║                                        ║');
-      console.log('║       Allen GTD API Server             ║');
-      console.log('║                                        ║');
-      console.log('╚════════════════════════════════════════╝');
-      console.log('');
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('');
-      console.log('📍 Endpoints:');
-      console.log(`   Health: http://localhost:${PORT}/health`);
-      console.log(`   API Info: http://localhost:${PORT}/api/v1`);
-      console.log(`   Register: POST http://localhost:${PORT}/api/v1/auth/register`);
-      console.log(`   Login: POST http://localhost:${PORT}/api/v1/auth/login`);
-      console.log('');
-      console.log('Press Ctrl+C to stop');
-      console.log('');
+    app.listen(port, () => {
+      logger.info(`Allen GTD API started`, {
+        url:         `http://localhost:${port}`,
+        environment: nodeEnv,
+        pid:         process.pid,
+      });
+
+      if (!isProd) {
+        logger.debug('Endpoints', {
+          health: `http://localhost:${port}/health`,
+          api:    `http://localhost:${port}/api/v1`,
+          auth:   `POST http://localhost:${port}/api/v1/auth/register`,
+        });
+      }
     });
   } catch (error) {
-    console.error('✗ Failed to start server:', error);
+    logger.error('Failed to start server', { error });
     process.exit(1);
   }
 }
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────
 
-process.on('SIGTERM', async () => {
-  console.log('');
-  console.log('⚠ SIGTERM received, shutting down gracefully...');
+async function shutdown(signal: string): Promise<void> {
+  logger.info(`${signal} received — shutting down gracefully`);
   await closePool();
   process.exit(0);
-});
+}
 
-process.on('SIGINT', async () => {
-  console.log('');
-  console.log('⚠ SIGINT received, shutting down gracefully...');
-  await closePool();
-  process.exit(0);
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
 
 startServer();

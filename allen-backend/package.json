@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest --forceExit",
+    "test": "jest --runInBand --forceExit",
+    "test:integration": "jest --runInBand --forceExit",
     "test:db": "ts-node src/test-db.ts",
     "test:connection": "ts-node src/test-connection.ts"
   },
@@ -18,11 +19,23 @@
   ],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
     "testMatch": [
       "**/__tests__/**/*.test.ts"
+    ],
+    "setupFiles": [
+      "./src/__tests__/setup.ts"
+    ],
+    "globalTeardown": "./src/__tests__/teardown.ts",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "setup\\.ts$",
+      "teardown\\.ts$"
     ]
   },
   "dependencies": {
@@ -30,8 +43,10 @@
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
+    "express-rate-limit": "^8.4.1",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

@@ -1,0 +1,32 @@
+databases:
+  - name: allen-gtd-db
+    databaseName: allen_gtd
+    user: allen_gtd_user
+    plan: free
+
+services:
+  - type: web
+    name: allen-gtd-api
+    runtime: node
+    rootDir: allen-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: allen-gtd-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_GENERAL
+        value: 1000
+      - key: RATE_LIMIT_AUTH
+        value: 20
